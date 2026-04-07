@@ -74,10 +74,6 @@ def coulomb_potential(shape: tuple, charge: float, nucleus_pos: tuple):
     return V
 
 
-if __name__ == "__main__":
-    shape = (50, 50, 50)
-    V = coulomb_potential(shape, 1, (25.5, 25.5, 25.5))
-    H = build_hamiltonian(shape, V, 1, 1)
-    print(H.nnz)
+
     
     
