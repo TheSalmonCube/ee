@@ -73,13 +73,3 @@ def radial_density_function(shape: tuple, psi:np.ndarray, center: tuple, dx: int
 
     plt.hist(r, weights=p, bins=shape[0]//2)
     plt.show()
-    
-if __name__ == "__main__":
-    shape = (50, 50, 50)
-    for k in range(5):
-        psi = np.load(f'wavefunctions/coulomb_k{k}_m100_{shape}.npy')
-        cross_section_color(shape, psi, index=25, plane=2)
-
-
-    
-    
