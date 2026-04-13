@@ -74,7 +74,8 @@ def coulomb_potential(shape: tuple, charge1: float, charge2: float, nucleus_pos:
 
     for point in np.ndindex(shape):
         idx = index(shape, point)
-        r = np.linalg.norm(np.array(point) - np.array(nucleus_pos))
+        # Distance r = |point - nucleus_pos| * dx
+        r = np.linalg.norm(np.array(point) - np.array(nucleus_pos)) * dx
         V[idx] = -charge / r
 
     return V

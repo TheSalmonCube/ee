@@ -13,7 +13,9 @@ import visualize
 
 ELECTRON_MASS = 0.51099895069 # MeV
 ELECTRON_CHARGE = 0.30282 # dimensionless
-GRID_SPACE = 268 # Mev-1. The bohr radius, the peak of 1s, should be at 268 Mev-1 or 1/(Me alpha).
+SCALE = 1 # bohr radii
+
+GRID_SPACE = 268 * SCALE # Mev-1. The bohr radius, the peak of 1s, should be at 268 Mev-1 or 1/(Me alpha). 
 
 def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False):
     n = H.shape[0]
@@ -33,11 +35,13 @@ def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False):
 
 
 if __name__ == "__main__":
-    shape = (50, 50, 50)
+    resolution = 50
+    shape = (resolution, resolution, resolution)
+    middle = shape[0] // 2
     K = [0, 1, 2, 3, 4]
     M = 100
 
-    V = hamiltonian.coulomb_potential(shape, ELECTRON_CHARGE, ELECTRON_CHARGE, (25.5, 25.5, 25.5), GRID_SPACE)
+    V = hamiltonian.coulomb_potential(shape, ELECTRON_CHARGE, ELECTRON_CHARGE, (middle + 0.5, middle + 0.5, middle + 0.5), GRID_SPACE)
     print(f'potential defined on {np.prod(shape)} grid points')
     
     H = hamiltonian.build_hamiltonian(shape, V, ELECTRON_MASS, GRID_SPACE)
@@ -45,13 +49,13 @@ if __name__ == "__main__":
 
     eigenvalues, eigenvectors = search_v1(H, m=M, k_list=K, verbose=True)
 
-    plt.imshow(V.reshape(shape)[:, :, 25])
+    plt.imshow(V.reshape(shape)[:, :, middle])
     plt.show()
 
     for k, eigenvector in enumerate(eigenvectors):
-        np.save(f'wavefunctions/coulomb_k{k}_m{M}_E({eigenvalues[k]:.3g})_{shape}.npy', eigenvector)
+        np.save(f'wavefunctions/coulomb_k{k}_m{M}_E({eigenvalues[k]:.3g})_S{shape}_dx{GRID_SPACE}.npy', eigenvector)
         print(f'saved wavefunction for k={k}')
-        visualize.cross_section_color(shape, eigenvector, index=25, plane=2)
+        visualize.cross_section_color(shape, eigenvector, index=middle, plane=2)
 
 
 
