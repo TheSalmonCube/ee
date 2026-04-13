@@ -4,9 +4,9 @@ from scipy import sparse
 def lanczos(A: sparse.csr_matrix, v0: np.ndarray, m: int):
     n = v0.shape[0]
 
-    alphas = np.zeros(m)
-    betas = np.zeros(m)
-    Q = np.zeros((n, m))
+    alphas = np.zeros(m, dtype=np.complex64)
+    betas = np.zeros(m, dtype=np.complex64)
+    Q = np.zeros((n, m), dtype=np.complex64)
 
     # normalize v
     v = v0 / np.linalg.norm(v0)
@@ -18,10 +18,10 @@ def lanczos(A: sparse.csr_matrix, v0: np.ndarray, m: int):
 
         # orthogonalize against all previous v (see note 1)
         for j in range(i):
-            w -= np.dot(w, Q[:, j]) * Q[:, j]
+            w -= np.vdot(Q[:, j], w) * Q[:, j]
         
         # alpha is the projection of A*v on v
-        alphas[i] = np.dot(w, v)
+        alphas[i] = np.vdot(v, w)
         v = w - alphas[i] * v
 
         # beta is the norm of the new v
