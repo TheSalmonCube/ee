@@ -4,7 +4,10 @@ from scipy import sparse
 
 # H = h/2m ∂x^2 + V
 
-# natural units are used, h bar is 1
+# particle physics natural units are used: c = hbar = e0 = 1
+# from fine structure constant alpha = 1/137.036
+# elementary charge = sqrt(4 pi alpha) = 0.30282
+# mass of electron = 0.51099895069 MeV 
 
 # 3 dimensions
 
@@ -42,7 +45,7 @@ def build_hamiltonian(shape: tuple, V: np.ndarray, m: float, dx: float):
         idx = index(shape, point)
         row.append(idx)
         col.append(idx)
-        obj.append(-0.5 / m * (-2 * dimensions) + V[idx])
+        obj.append(-0.5 / (m * dx**2) * (-2 * dimensions) + V[idx])
 
         # OFF DIAGONAL
         # Kinetic: 1/2m * (1) / dx^2 for each dimension
@@ -64,12 +67,15 @@ def build_hamiltonian(shape: tuple, V: np.ndarray, m: float, dx: float):
     
 ### DIFFERENT POTENTIALS
 
-def coulomb_potential(shape: tuple, charge: float, nucleus_pos: tuple):
+def coulomb_potential(shape: tuple, charge1: float, charge2: float, nucleus_pos: tuple, dx: float):
     V = np.zeros(np.prod(shape))
+    reciprocalk = 0.25 / np.pi # 1/4pi (epsilon0 is 1 in natural units)
+    charge = charge1 * charge2 * reciprocalk
 
     for point in np.ndindex(shape):
         idx = index(shape, point)
-        V[idx] = -charge / np.linalg.norm(np.array(point) - np.array(nucleus_pos))
+        r = np.linalg.norm(np.array(point) - np.array(nucleus_pos))
+        V[idx] = -charge / r
 
     return V
 
