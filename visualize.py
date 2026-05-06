@@ -67,9 +67,13 @@ def radial_density_function(shape: tuple, psi:np.ndarray, center: tuple, dx: int
     r = []
     p = []
 
-    for point in np.ndindex(shape):
-        r.append(np.linalg.norm(np.array(point) - np.array(center)) * dx)
-        p.append(probability[point])
+    # Vectorized radial distance calculation
+    coords = np.indices(shape).astype(float)
+    for i in range(len(shape)):
+        coords[i] -= center[i]
+    
+    r = np.sqrt(np.sum(coords**2, axis=0)).flatten() * dx
+    p = probability.flatten()
 
     plt.hist(r, weights=p, bins=shape[0]//2)
     plt.show()
