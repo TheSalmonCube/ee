@@ -13,13 +13,13 @@ import visualize
 
 ELECTRON_MASS = 0.51099895069 # MeV
 ELECTRON_CHARGE = 0.30282 # dimensionless
-SCALE = 1 # bohr radii
+SCALE = 0.5 # bohr radii
 
 GRID_SPACE = 268 * SCALE # Mev-1. The bohr radius, the peak of 1s, should be at 268 Mev-1 or 1/(Me alpha). 
 
 def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False):
     n = H.shape[0]
-    v0 = np.random.rand(n) + np.random.rand(n)*1j
+    v0 = np.ones(n) + np.ones(n)*1j
     Q, alphas, betas = algorithms.lanczos(H, v0, m)
     if verbose: print(f'lanczos completed with {m} dimensions')
 
@@ -35,7 +35,7 @@ def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False):
 
 
 if __name__ == "__main__":
-    resolution = 50
+    resolution = 100
     shape = (resolution, resolution, resolution)
     middle = shape[0] // 2
     K = [0, 1, 2, 3, 4]
@@ -49,13 +49,12 @@ if __name__ == "__main__":
 
     eigenvalues, eigenvectors = search_v1(H, m=M, k_list=K, verbose=True)
 
-    plt.imshow(V.reshape(shape)[:, :, middle])
-    plt.show()
-
     for k, eigenvector in enumerate(eigenvectors):
         np.save(f'wavefunctions/coulomb_k{k}_m{M}_E({eigenvalues[k]:.3g})_S{shape}_dx{GRID_SPACE}.npy', eigenvector)
         print(f'saved wavefunction for k={k}')
         visualize.cross_section_color(shape, eigenvector, index=middle, plane=2)
+    
+    print(f'eigenvalues: {eigenvalues}')
 
 
 
