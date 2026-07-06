@@ -1,6 +1,11 @@
+from search import BOHR_RADIUS
+from search import simulate_hydrogen
+
 import numpy as np
 from scipy import sparse
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import time
 
 import algorithms
 import hamiltonian
@@ -10,75 +15,112 @@ import search
 # particle physics natural units are used: c = hbar = e0 = 1
 # from fine structure constant alpha = 1/137.036
 # elementary charge = sqrt(4 pi alpha) = 0.30282
-# mass of electron = 0.51099895069 MeV
+# mass of electron = 510998.95069 eV
 
-
-class Datapoint:
-    def __init__(self, resolution: int, krylov_dimension: int, levels: int):
-        # PARAMETERS (INDEPENDENT VARIABLES)
-        self.resolution = resolution
-        self.krylov_dimension = krylov_dimension
-        self.levels = range(levels)
-
-        self.shape = (resolution, resolution, resolution) # cube with side length of resolution
-        self.middle = resolution // 2 # XYZ coordinate of cube center
-
-        self.SCALE = 50 / resolution # in bohr radii. Equal to 50/resolution so that the cube has constant side length 50 bohr radii.
-        self.GRID_SPACE = 268 * self.SCALE # Mev-1. The bohr radius, the peak of 1s, should be at 268 Mev-1 or 1/(Me alpha). 
-
-        # PHYSICAL CONSTANTS
-        self.ELECTRON_MASS = 0.51099895069 # MeV
-        self.ELECTRON_CHARGE = 0.30282 # dimensionless in energy units. 
+def run_experiment(grid_spacings: list, krylov_dimensions: list, energy_levels: int, side_length: float = 60, 
+                    max_time: float = 0, metric: str = 'percent', save_eigenvectors: bool = False, verbose: bool = False):
         
-        # HAMILTONIAN
-        self.V = hamiltonian.coulomb_potential(self.shape, self.ELECTRON_CHARGE, self.ELECTRON_CHARGE, 
-            (self.middle + 0.5, self.middle + 0.5, self.middle + 0.5), self.GRID_SPACE) # nucleus offset by 0.5 to avoid pole at r=0
-        self.H = hamiltonian.build_hamiltonian(self.shape, self.V, self.ELECTRON_MASS, self.GRID_SPACE)
+        """
+        Runs an experiment testing the eigenvalue accuracy of different parameters.
+
+        Args:
+            grid_spacings: list of grid spacings to test (in Bohr Radii)
+            krylov_dimensions: list of krylov dimensions to test
+            energy_levels: number of energy levels to test
+            side_length: side length of the cubic grid in Bohr Radii
+            max_time: maximum time to run the simulation, stops increasing grid_spacings or krylov_dimension if time exceeded
+            metric: metric to use for measuring accuracy
+            save_eigenvectors: whether to save the eigenvectors
+            verbose: whether to print progress updates
+        """
+
+        grid_spacings.sort(reverse=True)
+        krylov_dimensions.sort()
+
+        eigenvalues = np.zeros((len(grid_spacings), len(krylov_dimensions), energy_levels))
+        accuracies = np.zeros((len(grid_spacings), len(krylov_dimensions)))
+        times = np.zeros((len(grid_spacings), len(krylov_dimensions)))
+
+        exact_eigenvalues = np.fromfunction(lambda n: -13.6057/(n+1)**2, (energy_levels,))
+
+        for i, delta in enumerate(grid_spacings):
+            for j, m in enumerate(krylov_dimensions):
+                resolution = np.ceil(side_length/delta).astype(int)
+
+                start_time = time.time()
+                eigenvalues[i, j], _ = simulate_hydrogen(delta * BOHR_RADIUS, # delta is in Bohr Radii. Convert to inverse energy length units 
+                resolution, m, energy_levels, False, save_eigenvectors, False)
+                
+                times[i, j] = time.time() - start_time
+                if metric == 'mse':
+                    accuracies[i, j] = np.sum(np.square(eigenvalues[i, j] - exact_eigenvalues))
+                elif metric == 'percent':
+                    accuracies[i, j] = 100 * np.mean(np.abs(eigenvalues[i, j] - exact_eigenvalues) / np.abs(exact_eigenvalues))
+                
+                if verbose:
+                    print(f'delta={delta}, m={m}, accuracy={accuracies[i, j]}, time={times[i, j]}')
+
+                if max_time > 0 and times[i, j] > max_time:
+                    break
         
-        # EIGENVALUES AND EIGENVECTORS
-        self.eigenvalues, self.eigenvectors = search.search_v1(self.H, m=self.krylov_dimension, k_list=self.levels, verbose=False)
+        # plot accuracies
 
-    def plot_eigenvector(self, k: int):
-        visualize.cross_section_color(self.shape, self.eigenvectors[k], index=self.middle, plane=2)
-
-    def plot_radial_density(self, k: int):
-        visualize.radial_density_function(self.shape, self.eigenvectors[k], center=(self.middle + 0.5, self.middle + 0.5, self.middle + 0.5), dx=self.GRID_SPACE)
+        fig, ax = plt.subplots()
+        masked_accuracies = np.ma.masked_equal(accuracies, 0)
+        cmap = plt.cm.viridis.copy()
+        cmap.set_bad(color='black')
+        im = ax.imshow(masked_accuracies, origin='lower', norm=mcolors.LogNorm(), aspect='auto', cmap=cmap)
         
-    def eigenvector_error(self, k: int):
-        error = np.linalg.norm(self.H @ self.eigenvectors[k] - self.eigenvalues[k] * self.eigenvectors[k])
-        return error
-
-    def energy_mse(self, plot: bool = False):
-        ground_state = -0.03125 * self.ELECTRON_MASS * self.ELECTRON_CHARGE**4 / (np.pi**2) # from the analytical solution to the schrodinger equation with the natural units. Should equal Me e^4 / 32 pi^2 hbar^2. 
-        exact_eigenvalues = [ground_state / n**2 for n in range(1, len(self.levels)+1)] # these should be E1 times n^-2 from the analytical solution. 
+        ax.set_xticks(np.arange(len(krylov_dimensions)))
+        ax.set_xticklabels(krylov_dimensions)
+        ax.set_yticks(np.arange(len(grid_spacings)))
+        ax.set_yticklabels(grid_spacings)
         
-        if plot:
-            plt.plot(range(1, len(self.levels)+1), self.eigenvalues, label='calculated')
-            plt.plot(range(1, len(self.levels)+1), exact_eigenvalues, label='exact')
-            plt.legend()
-            plt.show()
+        ax.set_xlabel('m (dimensions)')
+        ax.set_ylabel('delta (Bohr radii)')
+        
+        cbar = fig.colorbar(im)
+        cbar.set_label(metric)
+        
+        plt.title(f'Accuracy ({metric})')
+        plt.show()
 
-        errors = self.eigenvalues - exact_eigenvalues
-        mse = np.dot(errors, errors)
-        return mse
 
-def run_experiment(resolutions: list, krylov_dimensions: list, levels: int):
-    r = len(resolutions)
-    k = len(krylov_dimensions)
-    energy_levels = np.zeros((r, k, levels)) # energy_levels[i,j,k] is the ith resolution, jth krylov dimension, kth energy level.
-    mean_squared_errors = np.zeros((r, k)) # mean_squared_errors[i,j] is the mse compared to analytical solution of the ith resolution, jth krylov dimension.
+        # plot simulation times
 
-    for i in range(r):
-        for j in range(k):
-            Test = Datapoint(resolution=resolutions[i], krylov_dimension=krylov_dimensions[j], levels=levels)
-            energy_levels[i, j] = Test.eigenvalues
-            mean_squared_errors[i, j] = Test.energy_mse()
-            del Test
+        fig, ax = plt.subplots()
+        masked_times = np.ma.masked_equal(times, 0)
+        cmap = plt.cm.viridis.copy()
+        cmap.set_bad(color='black')
+        im = ax.imshow(masked_times, origin='lower', norm=mcolors.LogNorm(), aspect='auto', cmap=cmap)
+        
+        ax.set_xticks(np.arange(len(krylov_dimensions)))
+        ax.set_xticklabels(krylov_dimensions)
+        ax.set_yticks(np.arange(len(grid_spacings)))
+        ax.set_yticklabels(grid_spacings)
+        
+        ax.set_xlabel('m (dimensions)')
+        ax.set_ylabel('delta (Bohr radii)')
+        
+        cbar = fig.colorbar(im)
+        cbar.set_label('time (s)')
+        
+        plt.title('Computation Time (s)')
+        plt.show()
 
-    plt.imshow(np.log10(mean_squared_errors), cmap='viridis')
-    plt.colorbar(label='mean squared error (orders of magnitude)')
-    plt.xlabel('krylov dimension')
-    plt.ylabel('resolution')
-    plt.show()
+        return eigenvalues, accuracies, times
 
-run_experiment(resolutions=[20, 40, 60, 80, 100], krylov_dimensions=[20, 40, 60, 80, 100], levels=5)
+
+if __name__ == "__main__":
+    eigs, accs, tims = run_experiment(grid_spacings=[1, 0.8, 0.64, 0.512, 0.4096],
+    krylov_dimensions=[20, 40, 80, 120, 160, 200], 
+    energy_levels=4,  
+    verbose=True, save_eigenvectors=False)    
+
+    print(eigs)
+    print(accs)
+    print(tims)
+
+
+
+    

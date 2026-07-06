@@ -9,11 +9,11 @@ import visualize
 # particle physics natural units are used: c = hbar = e0 = 1
 # from fine structure constant alpha = 1/137.036
 # elementary charge = sqrt(4 pi alpha) = 0.30282
-# mass of electron = 0.51099895069 MeV
+# mass of electron = 510998.95069 eV
 
-ELECTRON_MASS = 0.51099895069 # MeV
+ELECTRON_MASS = 510998.95069 # eV
 ELECTRON_CHARGE = 0.30282 # dimensionless
-BOHR_RADIUS = 268 # Mev-1. The bohr radius, the peak of 1s, should be at 268 Mev-1 or 1/(Me alpha). 
+BOHR_RADIUS = 0.00026817 # eV-1. The bohr radius, the peak of 1s, should be at 2.6817 * 10^-4 eV-1 or 1/(Me alpha). 
 
 def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False): # general tool for H
     n = H.shape[0]
@@ -83,7 +83,7 @@ def simulate_hydrogen(delta: int, resolution: int, krylov_dimension: int, levels
     return ritzvalues[levels_list], eigenvectors
 
 if __name__ == "__main__":
-    simulate_hydrogen(delta=0.4*BOHR_RADIUS, resolution=150, krylov_dimension=100, levels=4, verbose=True, save_eigenvectors=False, show_eigenvectors=True)
+    simulate_hydrogen(delta=0.41*BOHR_RADIUS, resolution=int(60/0.41), krylov_dimension=100, levels=4, verbose=True, save_eigenvectors=False, show_eigenvectors=True)
 
 
     
