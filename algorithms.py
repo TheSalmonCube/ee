@@ -1,38 +1,29 @@
 import numpy as np
 from scipy import sparse
-
 def lanczos(A: sparse.csr_matrix, v0: np.ndarray, m: int):
     n = v0.shape[0]
-
     alphas = np.zeros(m, dtype=np.complex128)
     betas = np.zeros(m, dtype=np.complex128)
     Q = np.zeros((n, m), dtype=np.complex128, order='F')
-
     # normalize v
     v = v0 / np.linalg.norm(v0)
     Q[:, 0] = v
-    
     for i in range(m):   
         # apply A to latest v for the new direction     
         w = A @ v
-
-        # orthogonalize against all previous v (see note 1)
+        # orthogonalize against all previous v
         coefficients = Q[:, :i].conj().T @ w 
         w -= Q[:, :i] @ coefficients
-        
         # alpha is the projection of A*v on v
         alphas[i] = np.vdot(v, w)
         v = w - alphas[i] * v
-
         # beta is the norm of the new v
         betas[i] = np.linalg.norm(v)
         v = v / betas[i]
-
         # store the next vector in Q unless we are at the final step
         if i < m - 1:
             Q[:, i+1] = v
-
-    # the final beta is just the norm of the (m+1)th vector, unneccessary
+    # the final beta is just the norm of the (m+1)th vector, unnecessary
     return Q, alphas, betas[:-1]
 
 # note 1 - The true lanczos algorithm only orthogonalizes against the previous two terms

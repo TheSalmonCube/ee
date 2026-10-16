@@ -1,17 +1,8 @@
 import numpy as np
-
 from scipy import sparse
-
-# H = h/2m ∂x^2 + V
-
+# H = -hbar**2 / (2*m) * Laplacian + V
 # particle physics natural units are used: c = hbar = e0 = 1
-# from fine structure constant alpha = 1/137.036
-# elementary charge = sqrt(4 pi alpha) = 0.30282
-# mass of electron = 0.51099895069 MeV 
-
-# 3 dimensions
-
-def index(shape: tuple, coord: tuple):
+def index(shape: tuple, coord: tuple): # Convert from x, y, z coordinates to vector indexing. Each grid point is a vector element.
     idx = 0
     for i in range(len(shape)):
         idx *= shape[i]
@@ -19,50 +10,30 @@ def index(shape: tuple, coord: tuple):
     return idx
     
 def build_hamiltonian(shape: tuple, V: np.ndarray, m: float, dx: float):
-    row = []
+    # The element (a,b) of this matrix is the effect of the bth element of x on the ath element of Hx.
+    row = [] 
     col = []
     obj = []
     dimensions = len(shape)
-    
-    # This hamiltonian is sparse N by N where N is the number of points in the grid. 
-    # I treat entire grid as a vector, rather than a dimensional tensor, to avoid multi-dim tensor math.
-    # If x is in the jth row and kth column of the hamiltonian means that the jth point in the grid of position space
-    # contributes x to the kth point in the grid in energy space.
-
-    # V in the Hamiltonian is element-wise multiplied to the wave function. This is represented by a diagonal matrix,
-    # with V(j,j) the potential energy at point j in the grid.
-
-    # K is more complicated. I decided to use the second finite difference for the second partial derivative (Laplacian)
-    # In one dimension, it is applying the kernel [ 1 -2 1 ] to each grid point, yielding a tridiagonal matrix.
-    # Generalizing to n dimensions, there must be a 1 at every (j,k) where k is next to j on the grid.
-    # and a -2 at every (j,j) for each dimension, totaling -2 * dims at (j,j). Then multiply by constant -h/2m.
-
-    for point in np.ndindex(shape):
-        # DIAGONAL
-        # Kinetic: -1/2m (-2 * dimensions) / dx^2
-        # Potential: V(point)
-
+    # V in the Hamiltonian is element-wise multiplied to the wave function. The jth element of Vx only depends on the jth element of x, so V is a diagonal matrix with V(j,j) equal to the potential energy at point j in the grid.
+    # T uses the second finite differences approximation. See Equations (17) and (18). The jth element of Tx only depends on the adjacent grid points. The jth element of x contributes -2 per unit to Tx while adjacent elements contribute 1 per unit as shown in Equation (17). This means that in the matrix T there must be a 1 at every (j,k) where k is next to j on the grid, and a -2 at every (j,j) for each dimension, totaling -2 * dims at (j,j). Then multiply by constant -hbar**2/(2*m*dx**2).
+    for point in np.ndindex(shape): # For every point (x,y,z).
+        # add the diagonal part of T and V, which is -6 * -hbar**2/(2*m*dx**2) and U(x,y,z) respectively.
         idx = index(shape, point)
         row.append(idx)
-        col.append(idx)
-        obj.append(-0.5 / (m * dx**2) * (-2 * dimensions) + V[idx])
-
-        # OFF DIAGONAL
-        # Kinetic: 1/2m * (1) / dx^2 for each dimension
-
+        col.append(idx) 
+        obj.append(-0.5 / (m * dx**2) * (-2 * dimensions) + V[idx]) 
+        # find adjacent points in each dimension x, y, and z.
         for dim in range(len(shape)):      
-            if point[dim] > 0:
-                row.append(idx)
-                col.append(index(shape, np.array(point) - np.eye(dimensions, dtype=int)[dim])) # np.eye(dimensions)[dim] is [0, ... 1 ... 0] with 1 on dim, so that when subtracted from point i get the point below it on that dimension
-                obj.append(-0.5 / (m * dx**2))
-            
-            if point[dim] < shape[dim] - 1:
-                row.append(idx)
-                col.append(index(shape, np.array(point) + np.eye(dimensions, dtype=int)[dim])) # np.eye(dimensions)[dim] is [0, ... 1 ... 0] with 1 on dim, so that when added to point i get the point above it on that dimension
-                obj.append(-0.5 / (m * dx**2))
-        
-    # BUILD
-    H = sparse.csr_matrix((obj, (row, col)), shape=(np.prod(shape), np.prod(shape)))
+            if point[dim] > 0: # if an adjacent grid point exists on the right/top/back,
+                row.append(idx) # row: current point index
+                col.append(index(shape, np.array(point) - np.eye(dimensions, dtype=int)[dim])) # column: adjacent point index
+                obj.append(-0.5 / (m * dx**2)) # set value to -hbar**2/(2*m*dx**2).
+            if point[dim] < shape[dim] - 1: # if an adjacent grid point exists on the left/bottom/front,
+                row.append(idx) # row: current point index
+                col.append(index(shape, np.array(point) + np.eye(dimensions, dtype=int)[dim])) # column: adjacent point index
+                obj.append(-0.5 / (m * dx**2)) # set value to -hbar**2/(2*m*dx**2).
+    H = sparse.csr_matrix((obj, (row, col)), shape=(np.prod(shape), np.prod(shape))) # build the sparse matrix
     return H
     
 ### DIFFERENT POTENTIALS

@@ -1,5 +1,6 @@
 # Project-Specific
 wavefunctions/
+figures/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

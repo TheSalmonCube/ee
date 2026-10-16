@@ -20,42 +20,39 @@ def cross_section_real(shape: tuple, psi: np.ndarray, index: int = -1, plane: in
     plt.show()
 
 def cross_section_magnitude(shape: tuple, psi: np.ndarray, index: int = -1, plane: int = 0):
-    wavefunction = psi.reshape(shape) 
-    if index == -1:
-        index = shape[plane] // 2
-    
-    if plane == 0:
+    wavefunction = psi.reshape(shape) # inputs `psi`, a complex vector defined on a set of grid with shape `shape`
+    if index == -1: # default middle cross-section
+        index = shape[plane] // 2 
+    if plane == 0: # x plane slice
         section = wavefunction[index, :, :]
-    elif plane == 1:
+    elif plane == 1: # y plane slice
         section = wavefunction[:, index, :]
-    else:
+    else: # z plane (default) slice
         section = wavefunction[:, :, index]
     
     plt.imshow(np.abs(np.square(section)))
     plt.show()
     
 def cross_section_color(shape: tuple, psi: np.ndarray, index: int = -1, plane: int = 0):
+    # inputs `psi`, a complex vector defined on a set of grid with shape `shape`
     wavefunction = psi.reshape(shape) 
-    if index == -1:
+    if index == -1: # default middle cross-section
         index = shape[plane] // 2
     
-    if plane == 0:
+    if plane == 0: #x plane slice
         section = wavefunction[index, :, :]
-    elif plane == 1:
+    elif plane == 1: # y plane slice
         section = wavefunction[:, index, :]
-    else:
+    else: # z plane (default) slice
         section = wavefunction[:, :, index]
     
-    magnitude = np.abs(section)
+    magnitude = np.abs(section) 
     phase = np.angle(section)
-
-    hue = phase / (2 * np.pi) + 0.5
-    saturation = np.ones(hue.shape)
-    value = magnitude / np.max(magnitude)
-
-    hsv = np.dstack((hue, saturation, value))
+    hue = phase / (2 * np.pi) + 0.5 # hue depends on phase
+    saturation = np.ones(hue.shape) # constant saturation
+    value = magnitude / np.max(magnitude) # brightness depends on magnitude compared to maximum
+    hsv = np.dstack((hue, saturation, value)) 
     rgb = hsv_to_rgb(hsv)
-
     plt.imshow(rgb)
     plt.show()
 

@@ -15,28 +15,22 @@ ELECTRON_MASS = 510998.95069 # eV
 ELECTRON_CHARGE = 0.30282 # dimensionless
 BOHR_RADIUS = 0.00026817 # eV-1. The bohr radius, the peak of 1s, should be at 2.6817 * 10^-4 eV-1 or 1/(Me alpha). 
 
-def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False): # general tool for H
-    n = H.shape[0]
-    v0 = np.ones(n, dtype=np.complex128)
-    Q, alphas, betas = algorithms.lanczos(H, v0, m)
+def search_v1(H: sparse.csr_matrix, m: int, k_list: list, verbose=False): # H has already been constructed. It is a sparse matrix, and I have to diagonalize it.
+    n = H.shape[0] # the dimension of H.
+    v0 = np.ones(n, dtype=np.complex128) # constant initial vector v0 for the Lanczos algorithm in Equation (22)
+    Q, alphas, betas = algorithms.lanczos(H, v0, m) # calls Code Excerpt 2.
     if verbose: print(f'lanczos completed with {m} dimensions')
-
-    T = np.diag(alphas) + np.diag(betas, 1) + np.diag(betas, -1)
-    ritzvalues, ritzvectors = np.linalg.eigh(T)
+    T = np.diag(alphas) + np.diag(betas, 1) + np.diag(betas, -1) # constructs the tridiagonal matrix T using the diagonals alpha and off-diagonals beta.
+    ritzvalues, ritzvectors = np.linalg.eigh(T) # T is a small matrix, so can be diagonalized quickly with standard methods. Ritz values are the eigenvalues of T, approximate eigenvalues of H. Ritz vectors are the eigenvectors of T, which when multiplied by Q, become the approximate eigenvectors of H.
     if verbose: print(f'ritz vectors and values found')
-    
     eigenvectors = []
     for k in k_list:
         eigenvectors.append(Q @ ritzvectors[:, k])
-
     return ritzvalues[k_list], eigenvectors
 
 def simulate_hydrogen(delta: int, resolution: int, krylov_dimension: int, levels: int, 
                         verbose=False, save_eigenvectors=False, show_eigenvectors=False):
-    # specific tool for hydrogen atom
-    # mostly calling algorithms.py and hamiltonian.py
-    # total time complexity O(r^3 m^2)
-    # all unit based constants defined at top of file.
+    # specific tool for hydrogen atom mostly calling algorithms.py and hamiltonian.py total time complexity O(r^3 m^2).
     if verbose: print(f'starting simulation: delta={delta}, resolution={resolution}, krylov_dimension={krylov_dimension}, levels={levels}')
     
     # define cubic grid. O(1)
@@ -83,7 +77,7 @@ def simulate_hydrogen(delta: int, resolution: int, krylov_dimension: int, levels
     return ritzvalues[levels_list], eigenvectors
 
 if __name__ == "__main__":
-    simulate_hydrogen(delta=0.41*BOHR_RADIUS, resolution=int(60/0.41), krylov_dimension=100, levels=4, verbose=True, save_eigenvectors=False, show_eigenvectors=True)
+    simulate_hydrogen(delta=0.4096*BOHR_RADIUS, resolution=int(60/0.4096), krylov_dimension=160, levels=4, verbose=True, save_eigenvectors=True, show_eigenvectors=True)
 
 
     

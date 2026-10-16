@@ -6,49 +6,37 @@ x = np.arange(-100,100,dtype=np.complex64)
 sigma = 10
 k = 0.25
 packet = 1/(np.sqrt(sigma) * (np.pi ** 0.25)) * np.exp(1j * k * x - x**2/(2 * sigma**2))
-plt.plot(x,np.real(packet),label="Real part of ψ")
-plt.plot(x,np.imag(packet),label="Imaginary part of ψ")
+plt.plot(x, np.real(packet), label="Real part of ψ")
+plt.plot(x, np.imag(packet), label="Imaginary part of ψ")
 plt.xlabel("Position")
 plt.ylabel("Amplitude")
-plt.title("Figure 1 - a complex-valued wavefunction ψ")
+plt.title("Figure 1 - A complex-valued wavefunction ψ")
 plt.legend()
 plt.show()
 
 ## Figure 2 – Its position probabilities
 
 packet_pdf = abs(packet)**2
-plt.plot(x,packet_pdf)
+plt.plot(x, packet_pdf)
 plt.xlabel("Position")
 plt.ylabel("Probability Density")
 plt.title("Figure 2 - Probability density of ψ, |ψ|^2")
 plt.legend()
 plt.show()
 
-## Figure 3 – Low momentum wavepacket
-sigma = 10
-k = 0.1
-slow_packet = 1/(np.sqrt(sigma) * (np.pi ** 0.25)) * np.exp(1j * k * x - x**2/(2 * sigma**2))
-plt.plot(x,np.real(slow_packet),label="Real part of ψ")
-plt.plot(x,np.imag(slow_packet),label="Imaginary part of ψ")
-plt.xlabel("Position")
-plt.ylabel("Amplitude")
-plt.title("Figure 3 - Particle with low momentum")
-plt.legend()
-plt.show()
-plt.plot()
+## Figure 3 - Approximating the wave function
 
-## Figure 4 – High momentum wavepacket
-sigma = 10
-k = 0.5
-fast_packet = 1/(np.sqrt(sigma) * (np.pi ** 0.25)) * np.exp(1j * k * x - x**2/(2 * sigma**2))
-plt.plot(x,np.real(fast_packet),label="Real part of ψ")
-plt.plot(x,np.imag(fast_packet),label="Imaginary part of ψ")
+gaussian = np.real(1/(np.sqrt(sigma) * (np.pi ** 0.25)) * np.exp(-x**2/(2 * sigma**2)))
+scatterx = [range(-50,51,10)]
+scattery = [gaussian[n] for n in range(50,151,10)]
+print(scattery)
+plt.plot(x, gaussian, label="Example wave function:\nInfinitely many values")
+plt.scatter(scatterx, scattery, label="Discrete approximation:\nFinite values", c="red")
 plt.xlabel("Position")
 plt.ylabel("Amplitude")
-plt.title("Figure 4 - Particle with high momentum")
-plt.legend()
+plt.title("Figure 3 - Outline of discretization process")
+plt.legend(loc="upper right")
 plt.show()
-plt.plot()
 
 ## Figure 5 – Momentum Operator Eigenvector
 
